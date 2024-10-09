@@ -3,8 +3,13 @@
     <div class="full-width q-px-xl">
       <div class="q-mb-xl">
         <q-input v-model="tempData.name" label="姓名" />
-        <q-input v-model="tempData.age" label="年齡" />
-        <q-btn color="primary" class="q-mt-md">新增</q-btn>
+        <q-input v-model="tempData.age" label="年齡" type="number" />
+        <q-btn v-if="editMode" color="primary" class="q-mt-md" @click="editData"
+          >變更</q-btn
+        >
+        <q-btn v-else color="primary" class="q-mt-md" @click="addData"
+          >新增</q-btn
+        >
       </div>
 
       <q-table
@@ -37,9 +42,8 @@
             >
               <div>{{ col.value }}</div>
             </q-td>
-            <q-td class="text-right" auto-width v-if="tableButtons.length > 0">
+            <q-td class="text-right" auto-width>
               <q-btn
-                @click="handleClickOption(btn, props.row)"
                 v-for="(btn, index) in tableButtons"
                 :key="index"
                 size="sm"
@@ -49,6 +53,7 @@
                 :icon="btn.icon"
                 class="q-ml-md"
                 padding="5px 5px"
+                @click="handleClickOption(btn, props.row)"
               >
                 <q-tooltip
                   transition-show="scale"
@@ -69,7 +74,7 @@
             style="font-size: 18px"
           >
             <q-icon size="2em" :name="icon" />
-            <span> 無相關資料 </span>
+            <span>無相關資料</span>
           </div>
         </template>
       </q-table>
@@ -78,53 +83,87 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios';
 import { QTableProps } from 'quasar';
 import { ref } from 'vue';
+
 interface btnType {
   label: string;
   icon: string;
   status: string;
 }
-const blockData = ref([
-  {
-    name: 'test',
-    age: 25,
-  },
-]);
+
+interface DataItem {
+  id: number;
+  name: string;
+  age: number | string;
+}
+
+const blockData = ref<DataItem[]>([]);
 const tableConfig = ref([
-  {
-    label: '姓名',
-    name: 'name',
-    field: 'name',
-    align: 'left',
-  },
-  {
-    label: '年齡',
-    name: 'age',
-    field: 'age',
-    align: 'left',
-  },
+  { label: '姓名', name: 'name', field: 'name', align: 'left' },
+  { label: '年齡', name: 'age', field: 'age', align: 'left' },
 ]);
-const tableButtons = ref([
-  {
-    label: '編輯',
-    icon: 'edit',
-    status: 'edit',
-  },
-  {
-    label: '刪除',
-    icon: 'delete',
-    status: 'delete',
-  },
+const tableButtons = ref<btnType[]>([
+  { label: '編輯', icon: 'edit', status: 'edit' },
+  { label: '刪除', icon: 'delete', status: 'delete' },
 ]);
 
-const tempData = ref({
-  name: '',
-  age: '',
-});
-function handleClickOption(btn, data) {
-  // ...
+const tempData = ref<Partial<DataItem>>({ name: '', age: '' });
+let editMode = false;
+let editIndex = -1;
+
+function generateId() {
+  return Date.now();
+}
+
+function resetForm() {
+  tempData.value = { name: '', age: '' };
+  editMode = false;
+  editIndex = -1;
+}
+
+function handleClickOption(btn: btnType, data: DataItem) {
+  if (btn.status === 'edit') {
+    editMode = true;
+    editIndex = blockData.value.findIndex((item) => item.id === data.id);
+    tempData.value = { ...data };
+  } else if (btn.status === 'delete') {
+    deleteData(data.id);
+  }
+}
+
+function editData() {
+  if (editIndex !== -1 && tempData.value.name && tempData.value.age !== null) {
+    blockData.value[editIndex] = {
+      ...tempData.value,
+      id: blockData.value[editIndex].id,
+    } as DataItem;
+    resetForm();
+  } else {
+    console.warn('無效的資料或未找到要編輯的項目');
+  }
+}
+
+function deleteData(id: number) {
+  const deleteIndex = blockData.value.findIndex((item) => item.id === id);
+  if (deleteIndex !== -1) {
+    blockData.value.splice(deleteIndex, 1);
+  } else {
+    console.warn('未找到要刪除的項目');
+  }
+}
+
+function addData() {
+  if (tempData.value.name && tempData.value.age !== null) {
+    const newItem: DataItem = {
+      ...tempData.value,
+      id: generateId(),
+    } as DataItem;
+    blockData.value.push(newItem);
+    resetForm();
+  } else {
+    alert('請填入正確資料');
+  }
 }
 </script>
 
